@@ -3,8 +3,8 @@
 from __future__ import print_function
 import sys
 import argparse
-from edrive_lib import base
-from edrive_lib import colors
+import base
+import colors
 import hvac
 import os
 import stat
