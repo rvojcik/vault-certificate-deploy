@@ -19,7 +19,7 @@ We also have complex infrastructure so we have to retrieve
 certificates in central place and then we distribute them into 
 datacenters, clouds or any other applications.
 
-## Deploy
+## How deploy work ?
 
 It deploy certificates to specified directory and create
 two directories `certs` and `private`.
@@ -27,6 +27,27 @@ two directories `certs` and `private`.
 * certs has mode 0644
 * private keys has mode 0640
 * it deploys all secret content from vault, keys as files with suitable extension <secretname>.<secretKey>
+
+## Installation
+
+### Python PyPI
+```
+pip install vault-cert-deploy
+```
+
+### Manual
+Manual installation
+
+```
+git clone https://github.com/rvojcik/vault-certificate-deploy
+cd vault-certificate-deploy
+sudo python ./setup.py install 
+```
+
+In the end 
+```
+vault-cert-deploy --help
+```
 
 ## Example configuration
 Can be found in `config.example`. 
