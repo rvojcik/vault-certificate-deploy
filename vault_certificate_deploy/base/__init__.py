@@ -7,7 +7,7 @@ from __future__ import print_function
 import pprint
 import sys
 from configparser import ConfigParser
-import colors
+from .. import colors
 
 class ConfigParse:
     """
