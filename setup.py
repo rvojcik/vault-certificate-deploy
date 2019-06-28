@@ -8,7 +8,7 @@ with open("requirements.txt", "r") as fh:
 
 setup(
     name="vault-certificate-deploy",
-    version="1.0.1",
+    version="1.0.2",
     packages=["vault_certificate_deploy"],
     install_requires=install_reqs,
     license="GPLv3",
@@ -16,7 +16,6 @@ setup(
     long_description=long_description,
     long_description_content_type="text/markdown",
     include_package_data=True,
-    package_data={'': ['requirements.txt']},
     url="https://github.com/rvojcik/vault-certificate-deploy",
     author="Robert Vojcik",
     author_email="robert@vojcik.net",
