@@ -4,7 +4,6 @@ from __future__ import print_function
 import sys
 import argparse
 from vault_certificate_deploy import base
-from vault_certificate_deploy import colors
 import hvac
 import os
 import stat
