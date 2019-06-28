@@ -1,0 +1,407 @@
+#!/usr/bin/env python
+
+from __future__ import print_function
+import sys
+import argparse
+from edrive_lib import base
+from edrive_lib import colors
+import hvac
+import os
+import stat
+import urllib3
+import re
+import shutil
+import requests
+import OpenSSL
+import time
+import pwd
+import grp
+
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+errors_count = 0
+
+# Default configuration file
+default_config_file = '/etc/vault-certificate-deploy/config.cnf'
+default_secret_mount_point = 'cert'
+
+# Required config sections and options
+config_map = {
+    "vault": ["address", "verify_tls"],
+    "storage": ["path"],
+}
+
+
+#
+# Config Validation
+#
+def validate_configuration(parsed_config):
+    """Validate configuration for required options and format"""
+
+    config_result_test = True
+    # Test sections
+    for section in ['vault', 'approle', 'storage']:
+        if not parsed_config.parser.has_section(section):
+            base.perr('No section %s in configuration file' % (section))
+            config_result_test = False
+
+    # Test options
+    for section in config_map.keys():
+        for option in config_map[section]:
+            if not parsed_config.parser.has_option(section, option):
+                base.perr('No options %s in section %s' % (option, section))
+                config_result_test = False
+
+    if not config_result_test:
+        base.eexit(1, "Configuration errors")
+
+
+#
+# Prepare variables
+#
+def prepare_variables():
+    """ Prepare variables from config file and arguments """
+
+    global storage_path
+    global role_id
+    global secret_id
+    global verify
+    global path_cert
+    global path_private
+    global vault_mount_point
+    global cert_list
+    global deploy_user
+    global deploy_group
+    global deploy_user_id
+    global deploy_group_id
+
+    cert_list = []
+    storage_path = config.parser.get('storage', 'path')
+
+    # Role ID
+    if args.role_id:
+        base.pdeb("Role id set from argument", args.debug)
+        role_id = args.role_id
+    else:
+        try:
+            base.pdeb("Role id set from config file", args.debug)
+            role_id = config.parser.get('approle', 'role_id')
+        except:
+            base.perr("Unable to determine role-id")
+            base.eexit(1, "You have to provide role-id in configuration file or as argument")
+
+    # Secret ID
+    if args.secret_id:
+        base.pdeb("Secret id set from argument", args.debug)
+        secret_id = args.secret_id
+    else:
+        try:
+            base.pdeb("Secret id set from config file", args.debug)
+            secret_id = config.parser.get('approle', 'secret_id')
+        except:
+            base.perr("Unable to determine secret-id")
+            base.eexit(1, "You have to provide secret-id in configuration file or as argument")
+
+    if config.parser.get('vault', 'verify_tls') == "no":
+        base.pdeb("TLS Verify disabled", args.debug)
+        verify = False
+    else:
+        base.pdeb("TLS Verify enabled", args.debug)
+        verify = True
+
+    # Deploy User and Group
+    try:
+        base.pdeb("Deploy User set from config file", args.debug)
+        deploy_user = config.parser.get('vault', 'deploy_user')
+    except:
+        base.pdeb("Deploy User not find in config file, settings root", args.debug)
+        deploy_user = 'root'
+
+    try:
+        base.pdeb("Deploy Group set from config file", args.debug)
+        deploy_group = config.parser.get('vault', 'deploy_group')
+    except:
+        base.pdeb("Deploy Group not find in config file, settings root", args.debug)
+        deploy_group = 'root'
+
+    try:
+        deploy_user_id = pwd.getpwnam(deploy_user).pw_uid
+    except KeyError:
+        base.pwrn("Unable to find user %s in the system, fallback to root" % (deploy_user))
+        deploy_user_id = 0
+    try:
+        deploy_group_id = grp.getgrnam(deploy_group).gr_gid
+    except KeyError:
+        base.pwrn("Unable to find group %s in the system, fallback to root" % (deploy_group))
+        deploy_group_id = 0
+
+    # Vault mount point
+    if args.mount_point:
+        vault_mount_point = args.mount_point
+    elif "mount_point" in config.parser.options('vault'):
+        vault_mount_point = config.parser.get('vault', 'mount_point')
+    else:
+        vault_mount_point = default_secret_mount_point
+    base.pdeb("Vault secret mount point: " + vault_mount_point, args.debug)
+
+    # Prepare destination dir
+    path_cert = storage_path + "/certs/"
+    base.pdeb("Path certificates: " + path_cert, args.debug)
+    path_private = storage_path + "/private/"
+    base.pdeb("Path keys: " + path_private, args.debug)
+
+    # Cert list and Cert Name
+    cert_list = []
+    # Use Cert file
+    if args.cert_list:
+        with open(args.cert_list, 'r') as fh:
+            tmp = fh.read().split('\n')
+            fh.close()
+        # remove unwanted lines
+        cert_list = [x for x in tmp if x and not x.startswith('#')]
+
+    # User certname argument
+    if args.cert_name:
+        cert_list.append(args.cert_name)
+
+    if not args.cert_name and not args.cert_list:
+        base.eexit(1, "Unable to determine certificate to deploy. Use -n or --cert-list")
+
+    base.pdeb("Merged cert_list: %s" % (str(cert_list)), args.debug)
+
+
+#
+# Clean certificates
+#
+def clean_certificates(storage, certificates):
+    ''' Clean unwanted certificates '''
+
+    # Exclude custom path by default
+    exclude = '.*/custom/.*'
+    # Array of directories to be deleted
+    dirs_to_delete = []
+
+    # Find all files in storage
+    for root, dirnames, filenames in os.walk(storage):
+        # Filenames exists
+        if filenames:
+            # Every file test
+            for filename in filenames:
+                delete_it = True
+                # Not excluded path
+                if not re.match(exclude, root):
+                    # Check file against deployed certs
+                    for crt in certificates:
+                        test_str = "^.*/" + crt + "$"
+                        if re.match(test_str, root):
+                            # We found it, don't delete it
+                            delete_it = False
+
+                    if delete_it:
+                        # Delete root dir of the file
+                        if root not in dirs_to_delete:
+                            dirs_to_delete.append(root)
+
+    if len(dirs_to_delete) > 0:
+        base.pout('There are some old cert dirs to be deleted')
+        for delete_dir in dirs_to_delete:
+            base.pout("Removing directory " + delete_dir)
+            shutil.rmtree(delete_dir)
+
+#
+# Validate Certificates
+#
+def certificate_validate(cert_t):
+    ''' Validate and Check certificates touple from Vault '''
+
+    # Check that SSL parts are valid certificates
+    try:
+        x509 = OpenSSL.crypto.load_certificate(OpenSSL.crypto.FILETYPE_PEM, cert_t[1]['data']['crt'])
+    except OpenSSL.crypto.Error as e:
+        base.perr("Certificate %s not valid format: %s" % (str(cert_t[0]), str(e)))
+        return False
+        
+    # Check Private key
+    try:
+        private_key = OpenSSL.crypto.load_privatekey(OpenSSL.crypto.FILETYPE_PEM, cert_t[1]['data']['key'])
+        private_key.check()
+    except TypeError as e:
+        base.perr("Private key in bad format for %s: %s" % (str(cert_t[0]), str(e)))
+        return False
+    except OpenSSL.crypto.Error as e:
+        base.perr("Private key inconsistent for %s: %s" % (str(cert_t[0]), str(e)))
+        return False
+
+    # Check expiration
+    seconds_expire = time.mktime(time.strptime(x509.get_notAfter().decode(), '%Y%m%d%H%M%SZ'))
+    if seconds_expire < 345600:
+        base.pwrn("Certificate %s is about to expire (%s seconds)" % (str(cert_t[0]), str(seconds_expire)))
+
+    return True
+
+#
+# MAIN PROGRAM LOOP
+#
+if __name__ == '__main__':
+    # Parsing arguments
+    parser = argparse.ArgumentParser(
+        description='Certificate deploy script for HashiCorp Vault',
+        epilog='Created by Robert Vojcik <robert@vojcik.net>')
+
+    parser.add_argument(
+        '-c',
+        dest='config_file',
+        default=default_config_file,
+        help='configuration file (default: %s)' % (default_config_file))
+    parser.add_argument(
+        '--role-id',
+        dest='role_id',
+        default=False,
+        help='Role id, as argument instead in config file')
+    parser.add_argument(
+        '--secret-id',
+        dest='secret_id',
+        default=False,
+        help='Secret id, as argument instead in config file')
+    parser.add_argument(
+        '--vault-mount',
+        dest='mount_point',
+        default=False,
+        help='Vault secrets mount point')
+    parser.add_argument(
+        '-n',
+        dest='cert_name',
+        default=False,
+        help='Certificate name to deploy')
+    parser.add_argument(
+        '--cert-list',
+        dest='cert_list',
+        default=False,
+        help='File containing list of certificates to deploy')
+    parser.add_argument(
+        '--ignore-ssl-check',
+        dest='ignore_ssl_check',
+        default=False,
+        action='store_true',
+        help='Skip certificate check')
+    parser.add_argument(
+        '-d',
+        dest='debug',
+        default=False,
+        action='store_true',
+        help='debug mode')
+
+    args = parser.parse_args()
+
+    # Config file parsing
+    base.pdeb("Loading configuration from %s" % (args.config_file), args.debug)
+    config = base.ConfigParse(args.config_file)
+    validate_configuration(config)
+
+    # Prepare variables from configuration and arguments
+    prepare_variables()
+
+    # Prepare Basic Directories
+    for path in [(path_cert, 0o0755), (path_private, 0o0750)]:
+        if not os.path.isdir(path[0]):
+            try:
+                os.makedirs(path[0], path[1])
+            except:
+                base.perr("Unable to create directory %s" % (str(path)))
+                base.eexit(1, "Error occured")
+        else:
+            # Set correct owners
+            os.chown(path[0], deploy_user_id, deploy_group_id)
+            os.chmod(path[0], path[1])
+
+    # Empty certificates are error state
+    if len(cert_list) < 1:
+        base.eexit(1, "There are no certificates to deploy.")
+
+    # Vault Auth, with approle
+    vault = hvac.Client(
+        url=config.parser.get('vault', 'address'),
+        verify=verify)
+    try:
+        auth_token = vault.auth_approle(role_id, secret_id)
+
+    except requests.ConnectTimeout as e:
+        base.perr("Connection Timeout: %s" % (str(e)))
+        base.eexit(1, "Connection Timeout")
+
+    except requests.ConnectionError as e:
+        base.perr("Connection Error: %s" % (str(e)))
+        base.eexit(1, "Connection Error")
+    
+    except hvac.exceptions.InvalidRequest as e:
+        base.eexit(1, "VAULT: %s" % (str(e)))
+
+    # Debug output        
+    base.pdeb("Vault auth connection: " + str(auth_token), args.debug)
+
+    # Read secrets into list of secrets
+    certificates = []
+    for cert_name in cert_list:
+        base.pdeb("Retrieving secret " + cert_name, args.debug)
+        secret = vault.read(vault_mount_point + "/" + cert_name)
+        base.pdeb("Secret: %s with keys %s" % (str(secret), str(secret.keys())), args.debug)
+        if secret is not None:
+            certificates.append((cert_name, secret))
+        else:
+            base.perr("Unable to retrieve secret " + vault_mount_point + "/" + cert_name)
+            # Increment error count
+            errors_count += 1
+
+    # Deploy certificates
+    for certificate_t in certificates:
+        cert_name = certificate_t[0]
+        certificate = certificate_t[1]
+        cert_dir_cert = path_cert + "/" + cert_name
+        cert_dir_private = path_private + "/" + cert_name
+
+        # Check Certificate. Avoid deploying wrong certificates
+        if args.ignore_ssl_check is False:
+            test_result = certificate_validate(certificate_t)
+
+            if test_result is not True:
+                base.pwrn("Certificate %s not pass the checks, skipping" % (str(cert_name)))
+                errors_count += 1
+                # Skip all and move to next cert
+                continue
+
+        for path in [(cert_dir_cert, 0o0755), (cert_dir_private, 0o0750)]:
+            if not os.path.isdir(path[0]):
+                try:
+                    os.makedirs(path[0], path[1])
+                except:
+                    base.perr("Unable to create directory %s" % (str(path)))
+                    base.eexit(1, "Error occured")
+            else:
+                # Set correct owners
+                os.chown(path[0], deploy_user_id, deploy_group_id)
+                os.chmod(path[0], path[1])
+
+        # Create certificate dir and files
+        for key in certificate['data'].keys():
+            if key == "key":
+                file_path = cert_dir_private + "/" + cert_name + "." + key
+            else:
+                file_path = cert_dir_cert + "/" + cert_name + "." + key
+
+            base.pdeb("Writing " + file_path, args.debug)
+            with open(file_path, 'w') as fh:
+                fh.write(certificate['data'][key])
+                fh.close()
+
+            # Change file permissions
+            if key == "key":
+                os.chmod(file_path, 0o640)
+            else:
+                os.chmod(file_path, 0o644)
+
+            os.chown(file_path, deploy_user_id, deploy_group_id)
+
+    # Clean unwanted certificates
+    clean_certificates(storage=storage_path, certificates=cert_list)
+
+if errors_count > 0:
+    base.eexit(1, "There was %d errors during process" % (errors_count))

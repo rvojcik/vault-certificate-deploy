@@ -1,0 +1,12 @@
+[vault]
+address=https://vault.domain.tld:8200
+verify_tls=yes
+deploy_user=root
+deploy_group=ssl-cert
+
+[approle]
+role_id=<changeme>
+secret_id=<changeme>
+
+[storage]
+path=/etc/ssl-certificates
