@@ -8,7 +8,7 @@ with open("requirements.txt", "r") as fh:
 
 setup(
     name="vault-certificate-deploy",
-    version="1.0.2",
+    version="1.0.3",
     packages=["vault_certificate_deploy"],
     install_requires=install_reqs,
     license="GPLv3",
