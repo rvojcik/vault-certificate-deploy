@@ -16,6 +16,7 @@ setup(
     long_description=long_description,
     long_description_content_type="text/markdown",
     include_package_data=True,
+    package_data={'': ['requirements.txt']},
     url="https://github.com/rvojcik/vault-certificate-deploy",
     author="Robert Vojcik",
     author_email="robert@vojcik.net",
