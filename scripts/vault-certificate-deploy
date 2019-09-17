@@ -231,7 +231,7 @@ def certificate_validate(cert_t):
         return False
 
     # Check expiration
-    seconds_expire = time.mktime(time.strptime(x509.get_notAfter().decode(), '%Y%m%d%H%M%SZ'))
+    seconds_expire = time.mktime(time.strptime(x509.get_notAfter().decode(), '%Y%m%d%H%M%SZ')) - time.time()
     if seconds_expire < 345600:
         base.pwrn("Certificate %s is about to expire (%s seconds)" % (str(cert_t[0]), str(seconds_expire)))
 
@@ -304,6 +304,9 @@ if __name__ == '__main__':
         if not os.path.isdir(path[0]):
             try:
                 os.makedirs(path[0], path[1])
+                # Set correct owners
+                os.chown(path[0], deploy_user_id, deploy_group_id)
+                os.chmod(path[0], path[1])
             except:
                 base.perr("Unable to create directory %s" % (str(path)))
                 base.eexit(1, "Error occured")
@@ -344,6 +347,7 @@ if __name__ == '__main__':
         secret = vault.read(vault_mount_point + "/" + cert_name)
         base.pdeb("Secret: %s with keys %s" % (str(secret), str(secret.keys())), args.debug)
         if secret is not None:
+            base.pdeb("Secret: %s with keys %s" % (str(secret), str(secret.keys())), args.debug)
             certificates.append((cert_name, secret))
         else:
             base.perr("Unable to retrieve secret " + vault_mount_point + "/" + cert_name)
