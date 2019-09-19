@@ -1,7 +1,8 @@
 # vault-cert-deploy
 
 Deploy SSL certificates from HashiCorp's Vault secret server
-Script is able to deploy certificates from KV store of Vault.
+Script is able to deploy certificates from KV store of Vault
+or when you use issue version of script it use PKI secret storage.
 
 As auth method is used [Approle](https://www.vaultproject.io/docs/auth/approle.html "Vault Approle Doc"), you need role and secret id
 deployed to server from different systems/locations. More
@@ -130,6 +131,46 @@ I store Puppet configuration in Git, and therefore I have not
 role-id and secret-id together in my repository.
 I choose to deploy `secret-id` with puppet because when need to 
 rotate secret-id it is automaticly deployed by puppet to infrastructure.
+
+## What is issue version of the script ?
+Issue version of the command or script uses different Secret Storage
+Engine. It uses [PKI](https://www.vaultproject.io/api/secret/pki/index.html) which gives you ability to create
+your own CA or Intermediate CA. Vault handle both certs generation and issuing. 
+
+You have to specify PKI mount point with `--vault-pki` option.
+This pki mount_point is used as subdirectory of storage path in your
+config file. In this subdirectory we create same structure `certs` and `private`
+like in other version of the script.
+
+### What is difference in function ?
+Issue command check if certificates you define exists, and it check their expiration time
+defined by `--cert-min-ttl` option. 
+
+It basicaly means it generates and issue certificates for you, if they not exist, or if they are 
+close to expire. It is great automation capability in combination with Configuration
+Management systems. You don't have to take care of the certificates anymore.
+
+If certificates you define exists and are valid script just do nothing.
+
+### Examples
+Create certificate server1.domin.intra on PKI mounted in pki mount point of vault.
+If you want to issue new certificate, you have to issue it against some role. In 
+our case this role is `test`.
+
+More information about [PKI roles in documentation](https://www.vaultproject.io/docs/secrets/pki/index.html).
+```
+vault-certificate-issue-deploy --vault-pki pki -n server1.domain.intra --cert-role test
+```
+
+If we need some subject alternative name you can define it as `--cert-extra-options`
+```
+vault-certificate-issue-deploy --vault-pki pki -n server1.domain.intra --cert-role test --cert-extra-options "alt_names=console.domain.intra,console1.domain.intra,admin.domain.intra"
+```
+Result of this can be something like this
+```
+ X509v3 Subject Alternative Name: 
+     DNS:console.domain.intra, DNS:console1.domain.intra, DNS:admin.domain.intra
+```
 
 # Security Best Practices
 * Never store your role-id and secret-id in your repository together
