@@ -1,0 +1,10 @@
+# Example cert_list file for issue version of the 
+# vault certificate deploy script.
+#
+# Issue version support extra certificate parameters
+# like alt_names, ip_sans, uri_sans etc
+# More infor about supported extra parameters is on
+# https://www.vaultproject.io/api/secret/pki/index.html#generate-certificate
+#
+server1.domain.intra
+server2.domain.intra alt_names=servers.domain.intra;ip_sans=192.168.1.1,192.168.2.1
