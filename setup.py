@@ -20,7 +20,8 @@ setup(
     author="Robert Vojcik",
     author_email="robert@vojcik.net",
     scripts=[
-        "scripts/vault-certificate-deploy"
+        "scripts/vault-certificate-deploy",
+        "scripts/vault-certificate-issue-deploy"
     ],
     keywords=['vault_certificate_deploy', 'vault_cert_deploy', 'certificate', 'vault-certificate-deploy', 'vault-cert-deploy', 'hashicorp', 'certificates'],
     classifiers=[
