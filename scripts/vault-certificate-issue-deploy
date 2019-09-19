@@ -151,6 +151,7 @@ def prepare_variables():
     base.pdeb("Path keys: " + path_private, args.debug)
 
     # Cert list and Cert Name
+    # Prepare cert_list, merge config with command line if needed
     cert_list = []
     # Use Cert file
     if args.cert_list:
@@ -191,7 +192,8 @@ def clean_certificates(storage, certificates):
                 # Not excluded path
                 if not re.match(exclude, root):
                     # Check file against deployed certs
-                    for crt in certificates:
+                    for crt_tmp in certificates:
+                        crt = crt_tmp.split(' ', 2)[0]
                         test_str = "^.*/" + crt + "$"
                         if re.match(test_str, root):
                             # We found it, don't delete it
@@ -259,7 +261,7 @@ def certificate_check(cert_name):
     try:
         x509 = OpenSSL.crypto.load_certificate(OpenSSL.crypto.FILETYPE_PEM, f.read())
     except OpenSSL.crypto.Error as e:
-        base.perr("Certificate %s not valid format: %s" % (str(cert_t[0]), str(e)))
+        base.perr("Certificate %s not valid format: %s" % (str(cert_name), str(e)))
         return False
     f.close()
 
@@ -319,6 +321,11 @@ if __name__ == '__main__':
         dest='cert_min_ttl',
         default='1209600',
         help='Certificate minimum TTL when checking certificate (seconds)')
+    parser.add_argument(
+        '--cert-extra-options',
+        dest='cert_extra_options',
+        default=False,
+        help='Certificate extra options as KEY1=VALUE delimited by semicolon. More info on: https://www.vaultproject.io/api/secret/pki/index.html#generate-certificate')
     parser.add_argument(
         '-n',
         dest='cert_name',
@@ -395,20 +402,45 @@ if __name__ == '__main__':
 
     # Read secrets into list of secrets
     certificates = []
-    for cert_name in cert_list:
+    for cert_name_line in cert_list:
+        cert_name_a = cert_name_line.split(' ', 2)
+        cert_name = cert_name_a[0]
+        if len(cert_name_a) == 2:
+            cert_options = cert_name_a[1]
+        else:
+            cert_options = False
+
         if certificate_check(cert_name):
             # Certificate is OK and Valid
             base.pdeb("Certificate %s is ok and valid" % (cert_name), args.debug)
         else:
-            # Certifikat nieje ok alebo nieje vobec
+            # Certificate does not exist or it's not OK
+
+            # Handle extra options
+            extra_options = {}
+            if cert_options:
+                process_opts = cert_options
+            elif args.cert_extra_options:
+                process_opts = args.cert_extra_options
+            else:
+                process_opts = False
+            
+            if process_opts:
+                for opt in process_opts.split(';'):
+                    key, value = opt.split('=')
+                    extra_options[key] = value
+
             # Ziskanie certifikatu
             try:
+                basic_params = { 'ttl': args.cert_ttl }
+                # Merge basic parameters with extra options
+                params = basic_params.copy()
+                params.update(extra_options)
+                # Generate certificate
                 response = vault.secrets.pki.generate_certificate(
                     name=args.role_name,
                     common_name=cert_name,
-                    extra_params={
-                        'ttl': args.cert_ttl
-                    }
+                    extra_params=params
                 )
             except hvac.exceptions.InvalidRequest as e:
                 base.perr("Unable to issue %s certificate against vault server. Get %s" % (cert_name, str(e)))
