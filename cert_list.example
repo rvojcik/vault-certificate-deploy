@@ -1,0 +1,3 @@
+# Example cert_list file for vault-certificate-deploy
+server1.domain.intra
+server2.domain.intra

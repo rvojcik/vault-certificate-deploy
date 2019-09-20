@@ -6,5 +6,8 @@
 # More infor about supported extra parameters is on
 # https://www.vaultproject.io/api/secret/pki/index.html#generate-certificate
 #
+# Syntax:
+# <CERT_NAME> [PKI_MOUNT_NAME] [PKI_POLICY] [CERT_EXTRA_PARAMS]
 server1.domain.intra
-server2.domain.intra alt_names=servers.domain.intra;ip_sans=192.168.1.1,192.168.2.1
+server2.domain.intra pki default alt_names=servers.domain.intra;ip_sans=192.168.1.1,192.168.2.1
+server1.domain2.in pki_kubernetes default

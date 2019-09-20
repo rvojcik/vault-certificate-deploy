@@ -22,13 +22,13 @@ errors_count = 0
 # Default configuration file
 default_config_file = '/etc/vault-certificate-deploy/config.cnf'
 default_secret_mount_point = 'cert'
+default_role_name = 'default'
 
 # Required config sections and options
 config_map = {
     "vault": ["address", "verify_tls"],
     "storage": ["path"],
 }
-
 
 #
 # Config Validation
@@ -59,19 +59,18 @@ def validate_configuration(parsed_config):
 #
 def prepare_variables():
     """ Prepare variables from config file and arguments """
-
-    global storage_path
+    global storage_core_path
+    global storage_paths
     global role_id
     global secret_id
     global verify
-    global path_cert
-    global path_private
     global vault_mount_point
-    global cert_list
+    global cert_list_dict
     global deploy_user
     global deploy_group
     global deploy_user_id
     global deploy_group_id
+    global role_name
 
     cert_list = []
 
@@ -98,6 +97,13 @@ def prepare_variables():
         except:
             base.perr("Unable to determine secret-id")
             base.eexit(1, "You have to provide secret-id in configuration file or as argument")
+
+    # Role Name
+    if args.role_name:
+        base.pdeb("Role name set from argument", args.debug)
+        role_name = args.role_name
+    else:
+        role_name = default_role_name
 
     if config.parser.get('vault', 'verify_tls') == "no":
         base.pdeb("TLS Verify disabled", args.debug)
@@ -141,34 +147,57 @@ def prepare_variables():
         vault_mount_point = default_secret_mount_point
     base.pdeb("Vault secret mount point: " + vault_mount_point, args.debug)
 
-    # Storage Path
-    storage_path = config.parser.get('storage', 'path') + "/" + vault_mount_point
-
-    # Prepare destination dir
-    path_cert = storage_path + "/certs/"
-    base.pdeb("Path certificates: " + path_cert, args.debug)
-    path_private = storage_path + "/private/"
-    base.pdeb("Path keys: " + path_private, args.debug)
-
     # Cert list and Cert Name
     # Prepare cert_list, merge config with command line if needed
-    cert_list = []
+    # We create simple datastructure here in dict per CA
+    cert_list_lines = []
     # Use Cert file
     if args.cert_list:
         with open(args.cert_list, 'r') as fh:
             tmp = fh.read().split('\n')
             fh.close()
         # remove unwanted lines
-        cert_list = [x for x in tmp if x and not x.startswith('#')]
+        cert_list_lines = [x for x in tmp if x and not x.startswith('#')]
 
     # User certname argument
     if args.cert_name:
-        cert_list.append(args.cert_name)
+        cert_list_lines.append(args.cert_name)
 
     if not args.cert_name and not args.cert_list:
         base.eexit(1, "Unable to determine certificate to deploy. Use -n or --cert-list")
+    base.pdeb("Merged cert_list: %s" % (str(cert_list_lines)), args.debug)
 
-    base.pdeb("Merged cert_list: %s" % (str(cert_list)), args.debug)
+    # Prepare simple dict per CA
+    cert_list_dict = {}
+    for i in cert_list_lines:
+        ia = i.split(' ', 4)
+        if len(ia) == 1:
+            if vault_mount_point in cert_list_dict:
+                cert_list_dict[vault_mount_point][ia[0]] = {'role': role_name, 'extra': False }
+            else:
+                cert_list_dict[vault_mount_point] = {ia[0]: {'role': role_name, 'extra': False }}
+        elif len(ia) == 2:
+            if ia[1] in cert_list_dict:
+                cert_list_dict[ia[1]][ia[0]] = {'role': role_name, 'extra': False }
+            else:
+                cert_list_dict[ia[1]] = {ia[0]: {'role': role_name, 'extra': False }}
+        elif len(ia) == 3:
+            if ia[1] in cert_list_dict:
+                cert_list_dict[ia[1]][ia[0]] = {'role': ia[2], 'extra': False }
+            else:
+                cert_list_dict[ia[1]] = {ia[0]: {'role': ia[2], 'extra': False }}
+        else:
+            if ia[1] in cert_list_dict:
+                cert_list_dict[ia[1]][ia[0]] = {'role': ia[2], 'extra': ia[3] }
+            else:
+                cert_list_dict[ia[1]] = {ia[0]: {'role': ia[2], 'extra': ia[3] }}
+
+    base.pdeb("Cert Dict: %s" % (str(cert_list_dict)), args.debug)
+
+    # Storage Path
+    storage_core_path = config.parser.get('storage', 'path')
+    storage_paths = [ config.parser.get('storage', 'path') + "/" + x for x in cert_list_dict.keys() ]
+
 
 
 #
@@ -177,14 +206,15 @@ def prepare_variables():
 def clean_certificates(storage, certificates):
     ''' Clean unwanted certificates '''
 
-    # Exclude custom path by default
-    exclude = '.*/custom/.*'
+    # Exclude custom & global path by default
+    # Global path is done by different script
+    exclude = '.*/(custom|global)/.*'
     # Array of directories to be deleted
     dirs_to_delete = []
 
     # Find all files in storage
     for root, dirnames, filenames in os.walk(storage):
-        # Filenames exists
+        # Filenames
         if filenames:
             # Every file test
             for filename in filenames:
@@ -192,17 +222,19 @@ def clean_certificates(storage, certificates):
                 # Not excluded path
                 if not re.match(exclude, root):
                     # Check file against deployed certs
-                    for crt_tmp in certificates:
-                        crt = crt_tmp.split(' ', 2)[0]
-                        test_str = "^.*/" + crt + "$"
-                        if re.match(test_str, root):
-                            # We found it, don't delete it
-                            delete_it = False
+                    for ca_name in certificates.keys():
+                        certs_a = certificates[ca_name].keys()
 
-                    if delete_it:
-                        # Delete root dir of the file
-                        if root not in dirs_to_delete:
-                            dirs_to_delete.append(root)
+                        for cert in certs_a:
+                            test_str = ".*/%s/(certs|private)/%s$" % (ca_name, re.escape(cert))
+                            if re.match(test_str, root):
+                                # We found it, don't delete it
+                                delete_it = False
+
+                        if delete_it:
+                            # Delete root dir of the file
+                            if root not in dirs_to_delete:
+                                dirs_to_delete.append(root)
 
     if len(dirs_to_delete) > 0:
         base.pout('There are some old cert dirs to be deleted')
@@ -218,14 +250,14 @@ def certificate_validate(cert_t):
 
     # Check that SSL parts are valid certificates
     try:
-        x509 = OpenSSL.crypto.load_certificate(OpenSSL.crypto.FILETYPE_PEM, cert_t[1]['data']['crt'])
+        x509 = OpenSSL.crypto.load_certificate(OpenSSL.crypto.FILETYPE_PEM, cert_t[2]['data']['crt'])
     except OpenSSL.crypto.Error as e:
-        base.perr("Certificate %s not valid format: %s" % (str(cert_t[0]), str(e)))
+        base.perr("Certificate %s:%s not valid format: %s" % (str(cert_t[0]), cert_t[1], str(e)))
         return False
         
     # Check Private key
     try:
-        private_key = OpenSSL.crypto.load_privatekey(OpenSSL.crypto.FILETYPE_PEM, cert_t[1]['data']['key'])
+        private_key = OpenSSL.crypto.load_privatekey(OpenSSL.crypto.FILETYPE_PEM, cert_t[2]['data']['key'])
         private_key.check()
     except TypeError as e:
         base.perr("Private key in bad format for %s: %s" % (str(cert_t[0]), str(e)))
@@ -244,12 +276,9 @@ def certificate_validate(cert_t):
 #
 # Check Certificate
 #
-def certificate_check(cert_name):
+def certificate_check(cert_file, cert_priv_file):
     ''' Check validity and existence of the certificate '''
     
-    cert_file = "%s/%s/%s.crt" % (path_cert, cert_name, cert_name)
-    cert_priv_file = "%s/%s/%s.key" % (path_private, cert_name, cert_name)
-
     if not os.path.isfile(cert_file):
         return False
 
@@ -359,24 +388,28 @@ if __name__ == '__main__':
     # Prepare variables from configuration and arguments
     prepare_variables()
 
-    # Prepare Basic Directories
-    for path in [(path_cert, 0o0755), (path_private, 0o0750)]:
-        if not os.path.isdir(path[0]):
-            try:
-                os.makedirs(path[0], path[1])
+    # For every storage path
+    for storage_path in storage_paths:
+        path_cert    = storage_path + '/certs'
+        path_private = storage_path + '/private'
+        # Prepare Basic Directories
+        for path in [(path_cert, 0o0755), (path_private, 0o0750)]:
+            if not os.path.isdir(path[0]):
+                try:
+                    os.makedirs(path[0], path[1])
+                    # Set correct owners
+                    os.chown(path[0], deploy_user_id, deploy_group_id)
+                    os.chmod(path[0], path[1])
+                except:
+                    base.perr("Unable to create directory %s" % (str(path)))
+                    base.eexit(1, "Error occured")
+            else:
                 # Set correct owners
                 os.chown(path[0], deploy_user_id, deploy_group_id)
                 os.chmod(path[0], path[1])
-            except:
-                base.perr("Unable to create directory %s" % (str(path)))
-                base.eexit(1, "Error occured")
-        else:
-            # Set correct owners
-            os.chown(path[0], deploy_user_id, deploy_group_id)
-            os.chmod(path[0], path[1])
 
     # Empty certificates are error state
-    if len(cert_list) < 1:
+    if len(cert_list_dict) < 1:
         base.eexit(1, "There are no certificates to deploy.")
 
     # Vault Auth, with approle
@@ -400,70 +433,71 @@ if __name__ == '__main__':
     # Debug output        
     base.pdeb("Vault auth connection: " + str(auth_token), args.debug)
 
-    # Read secrets into list of secrets
+    # Go through certificates and issue or renew
     certificates = []
-    for cert_name_line in cert_list:
-        cert_name_a = cert_name_line.split(' ', 2)
-        cert_name = cert_name_a[0]
-        if len(cert_name_a) == 2:
-            cert_options = cert_name_a[1]
-        else:
-            cert_options = False
+    for ca_name in cert_list_dict.keys():
+        for cert_name in cert_list_dict[ca_name].keys():
 
-        if certificate_check(cert_name):
-            # Certificate is OK and Valid
-            base.pdeb("Certificate %s is ok and valid" % (cert_name), args.debug)
-        else:
-            # Certificate does not exist or it's not OK
+            cert_options = cert_list_dict[ca_name][cert_name]['extra']
+            cert_file = "%s/%s/certs/%s/%s.crt" % (storage_core_path, ca_name, cert_name, cert_name)
+            cert_priv_file = "%s/%s/private/%s/%s.key" % (storage_core_path, ca_name, cert_name, cert_name)
+            cert_role_name = cert_list_dict[ca_name][cert_name]['role']
 
-            # Handle extra options
-            extra_options = {}
-            if cert_options:
-                process_opts = cert_options
-            elif args.cert_extra_options:
-                process_opts = args.cert_extra_options
+            if certificate_check(cert_file, cert_priv_file):
+                # Certificate is OK and Valid
+                base.pdeb("Certificate %s is ok and valid" % (cert_name), args.debug)
             else:
-                process_opts = False
-            
-            if process_opts:
-                for opt in process_opts.split(';'):
-                    key, value = opt.split('=')
-                    extra_options[key] = value
+                # Certificate does not exist or it's not OK
 
-            # Ziskanie certifikatu
-            try:
-                basic_params = { 'ttl': args.cert_ttl }
-                # Merge basic parameters with extra options
-                params = basic_params.copy()
-                params.update(extra_options)
-                # Generate certificate
-                response = vault.secrets.pki.generate_certificate(
-                    name=args.role_name,
-                    common_name=cert_name,
-                    extra_params=params
-                )
-            except hvac.exceptions.InvalidRequest as e:
-                base.perr("Unable to issue %s certificate against vault server. Get %s" % (cert_name, str(e)))
+                # Handle extra options
+                extra_options = {}
+                if cert_options:
+                    process_opts = cert_options
+                elif args.cert_extra_options:
+                    process_opts = args.cert_extra_options
+                else:
+                    process_opts = False
                 
-            if (response.status_code == 200):
-                secret = { 
-                    'data': {
-                        'key': response.json()['data']['private_key'],
-                        'ica': response.json()['data']['issuing_ca'],
-                        'crt': response.json()['data']['certificate']
+                if process_opts:
+                    for opt in process_opts.split(';'):
+                        key, value = opt.split('=')
+                        extra_options[key] = value
+
+                # Ziskanie certifikatu
+                try:
+                    basic_params = { 'ttl': args.cert_ttl }
+                    # Merge basic parameters with extra options
+                    params = basic_params.copy()
+                    params.update(extra_options)
+                    # Generate certificate
+                    response = vault.secrets.pki.generate_certificate(
+                        name=cert_role_name,
+                        common_name=cert_name,
+                        extra_params=params
+                    )
+                except hvac.exceptions.InvalidRequest as e:
+                    base.perr("Unable to issue %s certificate against vault server. Get %s" % (cert_name, str(e)))
+                    
+                if (response.status_code == 200):
+                    secret = { 
+                        'data': {
+                            'key': response.json()['data']['private_key'],
+                            'ica': response.json()['data']['issuing_ca'],
+                            'crt': response.json()['data']['certificate']
+                        }
                     }
-                }
-                certificates.append((cert_name, secret))
-            else:
-                base.perr("Unable to issue %s certificate against vault server. Get %s" % (cert_name, response.text))
-                errors_count += 1
+                    certificates.append((cert_name, ca_name, secret))
+                else:
+                    base.perr("Unable to issue %s certificate against vault server. Get %s" % (cert_name, response.text))
+                    errors_count += 1
 
     # Deploy certificates
     for certificate_t in certificates:
         cert_name = certificate_t[0]
-        certificate = certificate_t[1]
-        cert_dir_cert = path_cert + "/" + cert_name
-        cert_dir_private = path_private + "/" + cert_name
+        ca_name = certificate_t[1]
+        certificate = certificate_t[2]
+        cert_dir_cert = "%s/%s/certs/%s" % (storage_core_path, ca_name, cert_name)
+        cert_dir_private = "%s/%s/private/%s" % (storage_core_path, ca_name, cert_name)
 
         # Check Certificate. Avoid deploying wrong certificates
         if args.ignore_ssl_check is False:
@@ -508,7 +542,7 @@ if __name__ == '__main__':
             os.chown(file_path, deploy_user_id, deploy_group_id)
 
     # Clean unwanted certificates
-    clean_certificates(storage=storage_path, certificates=cert_list)
+    clean_certificates(storage=storage_core_path, certificates=cert_list_dict)
 
 if errors_count > 0:
     base.eexit(1, "There was %d errors during process" % (errors_count))
