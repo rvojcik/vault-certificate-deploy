@@ -471,6 +471,7 @@ if __name__ == '__main__':
                     params.update(extra_options)
                     # Generate certificate
                     response = vault.secrets.pki.generate_certificate(
+                        mount_point=ca_name,
                         name=cert_role_name,
                         common_name=cert_name,
                         extra_params=params
