@@ -398,6 +398,7 @@ if __name__ == '__main__':
                 try:
                     os.makedirs(path[0], path[1])
                     # Set correct owners
+                    base.pdeb("CHOWN %s -> %d:%d" %(path[0], deploy_user_id, deploy_group_id), args.debug)
                     os.chown(path[0], deploy_user_id, deploy_group_id)
                     os.chmod(path[0], path[1])
                 except:
@@ -405,6 +406,7 @@ if __name__ == '__main__':
                     base.eexit(1, "Error occured")
             else:
                 # Set correct owners
+                base.pdeb("CHOWN %s -> %d:%d" %(path[0], deploy_user_id, deploy_group_id), args.debug)
                 os.chown(path[0], deploy_user_id, deploy_group_id)
                 os.chmod(path[0], path[1])
 
@@ -514,11 +516,15 @@ if __name__ == '__main__':
             if not os.path.isdir(path[0]):
                 try:
                     os.makedirs(path[0], path[1])
+                    base.pdeb("CHOWN %s -> %d:%d" %(path[0], deploy_user_id, deploy_group_id), args.debug)
+                    os.chmod(path[0], path[1])
+                    os.chown(path[0], deploy_user_id, deploy_group_id)
                 except:
                     base.perr("Unable to create directory %s" % (str(path)))
                     base.eexit(1, "Error occured")
             else:
                 # Set correct owners
+                base.pdeb("CHOWN %s -> %d:%d" %(path[0], deploy_user_id, deploy_group_id), args.debug)
                 os.chown(path[0], deploy_user_id, deploy_group_id)
                 os.chmod(path[0], path[1])
 
