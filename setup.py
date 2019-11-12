@@ -1,4 +1,4 @@
-from setuptools import setup
+from setuptools import setup, find_packages
 
 with open("README.md", "r") as fh:
     long_description = fh.read()
@@ -9,7 +9,7 @@ with open("requirements.txt", "r") as fh:
 setup(
     name="vault-certificate-deploy",
     version="1.1.0",
-    packages=["vault_certificate_deploy"],
+    packages=find_packages(),
     install_requires=install_reqs,
     license="GPLv3",
     description="System for deploying certificates from Hashicorp Vault server",
