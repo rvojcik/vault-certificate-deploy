@@ -1,0 +1,63 @@
+.test_script: &test_job
+    stage: test
+    allow_failure: false
+    only:
+        - master
+        - tags
+        - merge_requests
+    script:
+        - apt-get update
+        - apt-get install -y $(cat tests/system-requirements.txt)
+        - pip install -r requirements.txt
+        - python
+        - run-parts --exit-on-error --regex '^[0-9]+.*\.sh$' ./tests/
+
+.build_script: &build_job
+    stage: build
+    allow_failure: false
+    only:
+        - tags
+        - master
+    script:
+        - pip install --upgrade setuptools wheel
+        - python setup.py sdist bdist_wheel
+    artifacts:
+        paths:
+            - dist/
+
+stages:
+    - test
+    - build
+    - publish
+
+Integration Test (Python2.7):
+    <<: *test_job
+    image: python:2.7-buster
+
+Integration Test (Python3.6):
+    <<: *test_job
+    image: python:3.6-buster
+
+Integration Test (Python3.8):
+    <<: *test_job
+    image: python:3.8-buster
+
+build_python2:
+    <<: *build_job
+    image: python:2.7-stretch
+
+build_python3:
+    <<: *build_job
+    image: python:3.6
+
+publish_package:
+    stage: publish
+    allow_failure: false
+    only:
+        - tags
+        - master
+    image: python:3.6
+    script:
+        - pip install --upgrade setuptools wheel twine
+        - ls -l dist/*
+        - twine upload dist/*

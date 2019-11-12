@@ -1,0 +1,11 @@
+wget
+curl
+python
+bash
+python-pip
+git
+unzip
+tree
+debianutils
+python-openssl
+python-configparser
