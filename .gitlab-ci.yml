@@ -17,7 +17,6 @@
     allow_failure: false
     only:
         - tags
-        - master
     script:
         - pip install --upgrade setuptools wheel
         - python setup.py sdist bdist_wheel
@@ -55,7 +54,6 @@ publish_package:
     allow_failure: false
     only:
         - tags
-        - master
     image: python:3.6
     script:
         - pip install --upgrade setuptools wheel twine

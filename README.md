@@ -1,5 +1,7 @@
 # vault-cert-deploy
 
+![pipeline](https://gitlab.com/rvojcik/vault-certificate-deploy/badges/master/pipeline.svg)
+
 Deploy SSL certificates from HashiCorp's Vault secret server
 Script is able to deploy certificates from KV store of Vault
 or when you use issue version of script it use PKI secret storage.

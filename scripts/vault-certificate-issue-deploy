@@ -3,6 +3,7 @@
 from __future__ import print_function
 import sys
 import argparse
+import vault_certificate_deploy
 from vault_certificate_deploy import base
 import hvac
 import os
@@ -372,6 +373,12 @@ if __name__ == '__main__':
         action='store_true',
         help='Skip certificate check')
     parser.add_argument(
+        '--version',
+        dest='version_print',
+        default=False,
+        action='store_true',
+        help='Show version of the script')
+    parser.add_argument(
         '-d',
         dest='debug',
         default=False,
@@ -379,6 +386,10 @@ if __name__ == '__main__':
         help='debug mode')
 
     args = parser.parse_args()
+
+    if args.version_print:
+        print(vault_certificate_deploy.__version__)
+        sys.exit(0)
 
     # Config file parsing
     base.pdeb("Loading configuration from %s" % (args.config_file), args.debug)

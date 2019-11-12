@@ -8,7 +8,7 @@ with open("requirements.txt", "r") as fh:
 
 setup(
     name="vault-certificate-deploy",
-    version="1.1.0",
+    version="1.1.1",
     packages=find_packages(),
     install_requires=install_reqs,
     license="GPLv3",
@@ -32,6 +32,9 @@ setup(
             "Programming Language :: Python",
             "Programming Language :: Python :: 2.7",
             "Programming Language :: Python :: 3",
+            "Programming Language :: Python :: 3.6",
+            "Programming Language :: Python :: 3.8",
+            "Topic :: System :: Systems Administration",
             "Topic :: Database",
             "Topic :: Security",
             "Topic :: Security :: Cryptography"
