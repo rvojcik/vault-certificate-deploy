@@ -9,7 +9,7 @@
         - apt-get update
         - apt-get install -y $(cat tests/system-requirements.txt)
         - pip install -r requirements.txt
-        - python
+        - python setup.py install
         - run-parts --exit-on-error --regex '^[0-9]+.*\.sh$' ./tests/
 
 .build_script: &build_job
