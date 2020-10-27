@@ -491,7 +491,9 @@ if __name__ == '__main__':
                     )
                 except hvac.exceptions.InvalidRequest as e:
                     base.perr("Unable to issue %s certificate against vault server. Get %s" % (cert_name, str(e)))
-                    
+
+                base.pdeb("Response: " + str(response), args.debug)
+                          
                 if (response.status_code == 200):
                     secret = { 
                         'data': {
