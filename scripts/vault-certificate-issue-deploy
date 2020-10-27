@@ -255,7 +255,7 @@ def certificate_validate(cert_t):
     except OpenSSL.crypto.Error as e:
         base.perr("Certificate %s:%s not valid format: %s" % (str(cert_t[0]), cert_t[1], str(e)))
         return False
-        
+
     # Check Private key
     try:
         private_key = OpenSSL.crypto.load_privatekey(OpenSSL.crypto.FILETYPE_PEM, cert_t[2]['data']['key'])
@@ -279,7 +279,7 @@ def certificate_validate(cert_t):
 #
 def certificate_check(cert_file, cert_priv_file):
     ''' Check validity and existence of the certificate '''
-    
+
     if not os.path.isfile(cert_file):
         return False
 
@@ -301,7 +301,7 @@ def certificate_check(cert_file, cert_priv_file):
 
     if seconds_expire < seconds_min_ttl:
         base.pwrn("Certificate %s is about to expire (%s < %s seconds)" % (cert_name, seconds_expire, str(seconds_min_ttl)))
-        return False    
+        return False
     else:
         base.pdeb("Certificate %s is ok. TTL to expire is %s seconds" % (cert_name, seconds_expire), args.debug)
         return True
@@ -439,11 +439,11 @@ if __name__ == '__main__':
     except requests.ConnectionError as e:
         base.perr("Connection Error: %s" % (str(e)))
         base.eexit(1, "Connection Error")
-    
+
     except hvac.exceptions.InvalidRequest as e:
         base.eexit(1, "VAULT: %s" % (str(e)))
 
-    # Debug output        
+    # Debug output
     base.pdeb("Vault auth connection: " + str(auth_token), args.debug)
 
     # Go through certificates and issue or renew
@@ -470,7 +470,7 @@ if __name__ == '__main__':
                     process_opts = args.cert_extra_options
                 else:
                     process_opts = False
-                
+
                 if process_opts:
                     for opt in process_opts.split(';'):
                         key, value = opt.split('=')
@@ -493,9 +493,9 @@ if __name__ == '__main__':
                     base.perr("Unable to issue %s certificate against vault server. Get %s" % (cert_name, str(e)))
 
                 base.pdeb("Response: " + str(response), args.debug)
-                          
+
                 if (isinstance(response, dict)) and ('data' in response):
-                    secret = { 
+                    secret = {
                         'data': {
                             'key': response['data']['private_key'],
                             'ica': response['data']['issuing_ca'],

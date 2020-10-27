@@ -1,5 +1,5 @@
 """
-Basic part 
+Basic part
 Debug error and warning prints, exit from program including cleanup
 """
 
@@ -13,7 +13,7 @@ class ConfigParse:
     """
     This Class automaticly check for config file and parse it.
     Creates variables structure to be able access it
-    
+
     It Also had config reload feature
 
     Config file format:
@@ -23,9 +23,9 @@ class ConfigParse:
     parameter2=value
     ...
 
-    Class provide basic manipulation with config file. 
+    Class provide basic manipulation with config file.
     More information about manipulation can be find in ConfigParser
-    official documentation. 
+    official documentation.
 
     Can access ConfigParser directly ConfigParse.parser.[.....]
 
@@ -59,12 +59,12 @@ class ConfigParse:
 
         self.parser = ConfigParser()
         self.parser.readfp(self.cfd)
-        
+
 
     def config_reload(self):
         """ Reload configuration file """
         self.__init__(self.cf)
-        
+
 
 def pwrn(*objs):
     """Print warning messages"""
@@ -78,7 +78,7 @@ def pdeb(obj, doprint=True):
     """
     Print simple debug messages using pprint
     It is possible to set doprint=False to silence output from function.
-    
+
     Can be handy with argument combination which sets debug or verbose output like:
     debug_mode = False
     base.pdeb("My debug message", debug_mode)

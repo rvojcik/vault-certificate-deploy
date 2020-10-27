@@ -219,7 +219,7 @@ def certificate_validate(cert_t):
     except OpenSSL.crypto.Error as e:
         base.perr("Certificate %s not valid format: %s" % (str(cert_t[0]), str(e)))
         return False
-        
+
     # Check Private key
     try:
         private_key = OpenSSL.crypto.load_privatekey(OpenSSL.crypto.FILETYPE_PEM, cert_t[1]['data']['key'])
@@ -344,11 +344,11 @@ if __name__ == '__main__':
     except requests.ConnectionError as e:
         base.perr("Connection Error: %s" % (str(e)))
         base.eexit(1, "Connection Error")
-    
+
     except hvac.exceptions.InvalidRequest as e:
         base.eexit(1, "VAULT: %s" % (str(e)))
 
-    # Debug output        
+    # Debug output
     base.pdeb("Vault auth connection: " + str(auth_token), args.debug)
 
     # Read secrets into list of secrets
