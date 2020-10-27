@@ -497,9 +497,9 @@ if __name__ == '__main__':
                 if (isinstance(response, dict)) and ('data' in response):
                     secret = { 
                         'data': {
-                            'key': response.json()['data']['private_key'],
-                            'ica': response.json()['data']['issuing_ca'],
-                            'crt': response.json()['data']['certificate']
+                            'key': response['data']['private_key'],
+                            'ica': response['data']['issuing_ca'],
+                            'crt': response['data']['certificate']
                         }
                     }
                     certificates.append((cert_name, ca_name, secret))
