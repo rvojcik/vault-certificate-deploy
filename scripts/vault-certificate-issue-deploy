@@ -494,7 +494,7 @@ if __name__ == '__main__':
 
                 base.pdeb("Response: " + str(response), args.debug)
                           
-                if (response.status_code == 200):
+                if (isinstance(response, dict) and ('data' in response):
                     secret = { 
                         'data': {
                             'key': response.json()['data']['private_key'],
