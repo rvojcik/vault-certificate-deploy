@@ -35,7 +35,7 @@ two directories `certs` and `private`.
 
 ### Python PyPI
 ```
-pip install vault-cert-deploy
+pip install vault-certificate-deploy
 ```
 
 ### Manual
