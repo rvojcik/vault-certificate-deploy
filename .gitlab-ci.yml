@@ -31,7 +31,7 @@ stages:
 
 Integration Test (Python3.6):
     <<: *test_job
-    image: python:3.6-buster
+    image: python:3.6
 
 Integration Test (Python3.8):
     <<: *test_job
