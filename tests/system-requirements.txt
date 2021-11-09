@@ -2,10 +2,9 @@ wget
 curl
 python
 bash
-python-pip
+python3-pip
 git
 unzip
 tree
 debianutils
-python-openssl
-python-configparser
+python3-openssl
