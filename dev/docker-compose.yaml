@@ -1,0 +1,11 @@
+version: '3.3'
+  
+services:
+  test:
+    image: 'python:3.9'
+    volumes:
+      - ../:/workdir
+      - ./:/develop
+    command:
+    - /develop/run-tests.sh
+    - /workdir

@@ -359,7 +359,7 @@ if __name__ == '__main__':
     for cert_name in cert_list:
         base.pdeb("Retrieving secret " + cert_name, args.debug)
         secret = vault.read(vault_mount_point + "/" + cert_name)
-        base.pdeb("Secret: %s with keys %s" % (str(secret), str(secret.keys())), args.debug)
+
         if secret is not None:
             base.pdeb("Secret: %s with keys %s" % (str(secret), str(secret.keys())), args.debug)
             certificates.append((cert_name, secret))

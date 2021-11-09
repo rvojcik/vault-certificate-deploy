@@ -58,6 +58,11 @@ cat > deploy3.conf <<EOF
 invalid-cert
 EOF
 
+echo "Prepair deploy config4"
+cat > deploy4.conf <<EOF
+_cert.that.not-exists
+EOF
+
 echo "Prepair client deploy"
 cat > client_cert.conf << EOF
 test1.test.intra
