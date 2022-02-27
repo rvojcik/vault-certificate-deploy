@@ -217,25 +217,14 @@ def clean_certificates(storage, certificates):
     for root, dirnames, filenames in os.walk(storage):
         # Filenames
         if filenames:
-            # Every file test
-            for filename in filenames:
-                delete_it = True
-                # Not excluded path
-                if not re.match(exclude, root):
-                    # Check file against deployed certs
-                    for ca_name in certificates.keys():
-                        certs_a = certificates[ca_name].keys()
-
-                        for cert in certs_a:
-                            test_str = ".*/%s/(certs|private)/%s$" % (ca_name, re.escape(cert))
-                            if re.match(test_str, root):
-                                # We found it, don't delete it
-                                delete_it = False
-
-                        if delete_it:
-                            # Delete root dir of the file
-                            if root not in dirs_to_delete:
-                                dirs_to_delete.append(root)
+            # Not excluded path
+            if not re.match(exclude, root):
+                ca_name, cert_dir, cert_name = root.split('/')[-3:]
+                if ca_name in certificates.keys():
+                    if cert_name not in certificates[ca_name].keys():
+                        dirs_to_delete.append(root)
+                else:
+                    dirs_to_delete.append(root)
 
     if len(dirs_to_delete) > 0:
         base.pout('There are some old cert dirs to be deleted')
