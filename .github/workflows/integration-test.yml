@@ -8,6 +8,9 @@ on:
 jobs:
   integration_test:
     runs-on: ubuntu-latest
+    container:
+      image: python:3.9
+      options: --user root
     steps:
     - uses: actions/checkout@v3
     - name: Set up Python
