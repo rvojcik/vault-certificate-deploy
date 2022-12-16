@@ -5,7 +5,7 @@ vault_output_file=./vault.log
 vault_download_addr="https://releases.hashicorp.com/vault"
 vault_latest_rel=vault_1.8.5
 vault_version=${vault_latest_rel/#vault_/}
-cert_destination=/etc/edrive/ssl
+cert_destination=./etc/edrive/ssl
 script="vault-certificate-deploy -d --vault-mount cert"
 script2="vault-certificate-issue-deploy -d --cert-role test --vault-pki pki"
 
