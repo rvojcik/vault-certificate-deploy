@@ -128,6 +128,10 @@ vault-certificate-deploy.py -c /etc/vault-deploy/config.conf \
   --role-id $(cat /etc/vault_role_id)
 ```
 
+## Hooks
+
+Scripts support definition of hooks directory (`hook_dir`) where you can plase any exacutable file. Every file in hooks directory is executed every time ssl certificates are deployed or changed. You could script any action you need.
+
 ### Why  ?
 I store Puppet configuration in Git, and therefore I have not 
 role-id and secret-id together in my repository.
