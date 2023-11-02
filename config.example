@@ -10,4 +10,4 @@ secret_id=<changeme>
 
 [storage]
 path=/etc/ssl-certificates
-hook_dir=/etc/ssl-hooks.d
+#hook_dir=/etc/ssl-hooks.d
