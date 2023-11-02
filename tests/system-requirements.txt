@@ -8,3 +8,4 @@ unzip
 tree
 debianutils
 python3-openssl
+python3-setuptools
