@@ -25,7 +25,7 @@ mkdir -p $cert_destination
 
 # Test second deploy
 ./vault kv delete cert/test-cert1
-./vault kv put cert/test-cert1 key=privatekey2 ica=interca2 crt=certificate2
+./vault kv put cert/test-cert1 key=privatekey2 ica=interca2 crt=certificate2 bundle=bundle2
 ./vault kv get cert/test-cert1
 
 $script -c ./script.conf --cert-list deploy2.conf --ignore-ssl-check
@@ -33,6 +33,8 @@ tree $cert_destination
 grep privatekey2 $cert_destination/private/test-cert1/test-cert1.key
 grep interca2 $cert_destination/certs/test-cert1/test-cert1.ica
 grep certificate2 $cert_destination/certs/test-cert1/test-cert1.crt
+grep bundle2 $cert_destination/private/test-cert1/test-cert1.bundlekey
+grep privatekey2 $cert_destination/private/test-cert1/test-cert1.bundlekey
 
 set +e
 

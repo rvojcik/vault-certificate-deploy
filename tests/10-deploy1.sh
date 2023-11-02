@@ -24,5 +24,9 @@ $script -c ./script.conf --cert-list deploy1.conf
 tree $cert_destination
 grep -E 'BEGIN.*PRIVATE' $cert_destination/private/test-cert1/test-cert1.key
 grep -E 'BEGIN CERTIFICATE' $cert_destination/certs/test-cert1/test-cert1.crt
+grep -E 'BEGIN CERTIFICATE' $cert_destination/private/test-cert1/test-cert1.bundlekey
+grep -E 'BEGIN.*PRIVATE' $cert_destination/private/test-cert1/test-cert1.bundlekey
 grep -E 'BEGIN.*PRIVATE' $cert_destination/private/test-cert2/test-cert2.key
 grep -E 'BEGIN CERTIFICATE' $cert_destination/certs/test-cert2/test-cert2.crt
+grep -E 'BEGIN CERTIFICATE' $cert_destination/private/test-cert2/test-cert2.bundlekey
+grep -E 'BEGIN.*PRIVATE' $cert_destination/private/test-cert2/test-cert2.bundlekey

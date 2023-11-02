@@ -21,9 +21,9 @@ mkdir -p $cert_destination
 
 echo "Prepare cert storage in vault"
 ./vault secrets enable -path cert kv
-./vault kv put cert/test-cert1 key="$(cat tests/certs/cert1.key)" crt="$(cat tests/certs/cert1.crt)"
+./vault kv put cert/test-cert1 key="$(cat tests/certs/cert1.key)" crt="$(cat tests/certs/cert1.crt)" bundle="$(cat tests/certs/cert1.crt)"
 ./vault kv get cert/test-cert1
-./vault kv put cert/test-cert2 key="$(cat tests/certs/cert2.key)" crt="$(cat tests/certs/cert2.crt)"
+./vault kv put cert/test-cert2 key="$(cat tests/certs/cert2.key)" crt="$(cat tests/certs/cert2.crt)" bundle="$(cat tests/certs/cert2.crt)"
 ./vault kv get cert/test-cert2
 ./vault kv put cert/invalid-cert key="asdgasdfasdf" crt="asdfasdfasdf"
 ./vault kv get cert/invalid-cert

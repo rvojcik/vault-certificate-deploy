@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 from __future__ import print_function
 import sys
@@ -16,6 +16,7 @@ import OpenSSL
 import time
 import pwd
 import grp
+import subprocess
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 errors_count = 0
@@ -29,7 +30,6 @@ config_map = {
     "vault": ["address", "verify_tls"],
     "storage": ["path"],
 }
-
 
 #
 # Config Validation
@@ -207,6 +207,7 @@ def clean_certificates(storage, certificates):
             base.pout("Removing directory " + delete_dir)
             shutil.rmtree(delete_dir)
 
+
 #
 # Validate Certificates
 #
@@ -237,6 +238,7 @@ def certificate_validate(cert_t):
         base.pwrn("Certificate %s is about to expire (%s seconds)" % (str(cert_t[0]), str(seconds_expire)))
 
     return True
+
 
 #
 # MAIN PROGRAM LOOP
@@ -310,6 +312,10 @@ if __name__ == '__main__':
     # Prepare variables from configuration and arguments
     prepare_variables()
 
+    # Don't run hooks by default
+    post_hooks_dir = '/etc/edrive/vault-certificate-deploy/post-hooks.d'
+    run_post_hooks = False
+
     # Prepare Basic Directories
     for path in [(path_cert, 0o0755), (path_private, 0o0750)]:
         if not os.path.isdir(path[0]):
@@ -360,10 +366,7 @@ if __name__ == '__main__':
         base.pdeb("Retrieving secret " + cert_name, args.debug)
         secret = vault.read(vault_mount_point + "/" + cert_name)
         if secret is None:
-            secret = vault.secrets.kv.v2.read_secret(
-                mount_point = vault_mount_point,
-                path = cert_name
-                )
+            secret = vault.secrets.kv.v2.read_secret(mount_point=vault_mount_point, path=cert_name)
             if secret is not None:
                 secret = secret["data"]
 
@@ -404,20 +407,38 @@ if __name__ == '__main__':
                 os.chown(path[0], deploy_user_id, deploy_group_id)
                 os.chmod(path[0], path[1])
 
+        # Add bundlekey
+        bundlekey_keys = (certificate['data']['bundle'], certificate['data']['key'])
+        certificate['data']['bundlekey'] = "\n".join(bundlekey_keys)
+
         # Create certificate dir and files
         for key in certificate['data'].keys():
-            if key == "key":
+            if key in ["key", "bundlekey"]:
                 file_path = cert_dir_private + "/" + cert_name + "." + key
             else:
                 file_path = cert_dir_cert + "/" + cert_name + "." + key
 
-            base.pdeb("Writing " + file_path, args.debug)
-            with open(file_path, 'w') as fh:
-                fh.write(certificate['data'][key])
-                fh.close()
+            if os.path.isfile(file_path):
+                with open(file_path, 'r') as fh:
+                   prev_cert = fh.read()
+                   fh.close()
+                if prev_cert == certificate['data'][key]:
+                    write_cert = False
+                    base.pdeb("Not writing " + file_path + " - already exists and is the same", args.debug)
+                else:
+                    write_cert = True
+            else:
+                write_cert = True
+
+            if write_cert:
+                run_post_hooks = True
+                base.pdeb("Writing " + file_path, args.debug)
+                with open(file_path, 'w') as fh:
+                    fh.write(certificate['data'][key])
+                    fh.close()
 
             # Change file permissions
-            if key == "key":
+            if key in ["key", "bundlekey"]:
                 os.chmod(file_path, 0o640)
             else:
                 os.chmod(file_path, 0o644)
@@ -426,6 +447,27 @@ if __name__ == '__main__':
 
     # Clean unwanted certificates
     clean_certificates(storage=storage_path, certificates=cert_list)
+
+    # Eventually run post hooks
+    if run_post_hooks:
+        base.pdeb("Trying to run script from hooks directory: " + post_hooks_dir, args.debug)
+        if os.path.exists(post_hooks_dir) and os.path.isdir(post_hooks_dir):
+            if not os.listdir(post_hooks_dir):
+                base.pdeb("Hooks directory " + post_hooks_dir + " is empty", args.debug)
+            else:
+                for hook in os.listdir(post_hooks_dir):
+                    hook_fp = post_hooks_dir + "/" + hook
+                    base.pdeb("Running post hook: " + hook, args.debug)
+                    hook_result = subprocess.run(hook_fp, shell=True, text=True, capture_output=True)
+                    if hook_result.returncode > 0:
+                        base.pdeb("There was error during the hook execution", args.debug)
+                        if hook_result.stderr:
+                            base.pdeb("STDERR output:", args.debug)
+                            base.pdeb(hook_result.stderr, args.debug)
+                        errors_count += 1
+        else:
+            base.pdeb("Hooks directory " + post_hooks_dir + " doesn't exist", args.debug)
+
 
 if errors_count > 0:
     base.eexit(1, "There was %d errors during process" % (errors_count))

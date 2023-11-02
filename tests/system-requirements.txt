@@ -1,6 +1,6 @@
 wget
 curl
-python
+python3
 bash
 python3-pip
 git
