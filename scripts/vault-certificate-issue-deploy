@@ -16,6 +16,7 @@ import OpenSSL
 import time
 import pwd
 import grp
+import subprocess
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 errors_count = 0
@@ -388,6 +389,10 @@ if __name__ == '__main__':
     # Prepare variables from configuration and arguments
     prepare_variables()
 
+    # Don't run hooks by default
+    post_hooks_dir = config.parser.get('storage', 'hook_dir', fallback=None)
+    run_post_hooks = False
+
     # For every storage path
     for storage_path in storage_paths:
         path_cert    = storage_path + '/certs'
@@ -453,6 +458,9 @@ if __name__ == '__main__':
                 base.pdeb("Certificate %s is ok and valid" % (cert_name), args.debug)
             else:
                 # Certificate does not exist or it's not OK
+                
+                # Run hooks
+                run_post_hooks = True
 
                 # Handle extra options
                 extra_options = {}
@@ -555,6 +563,31 @@ if __name__ == '__main__':
 
     # Clean unwanted certificates
     clean_certificates(storage=storage_core_path, certificates=cert_list_dict)
+
+    # Eventually run post hooks
+    if post_hooks_dir:
+        if run_post_hooks:
+            base.pdeb("Trying to run script from hooks directory: " + post_hooks_dir, args.debug)
+            if os.path.exists(post_hooks_dir) and os.path.isdir(post_hooks_dir):
+                if not os.listdir(post_hooks_dir):
+                    base.pdeb("Hooks directory " + post_hooks_dir + " is empty", args.debug)
+                else:
+                    for hook in os.listdir(post_hooks_dir):
+                        hook_fp = post_hooks_dir + "/" + hook
+                        base.pdeb("Running post hook: " + hook, args.debug)
+                        hook_result = subprocess.run(hook_fp, shell=True, text=True, capture_output=True)
+                        if hook_result.returncode > 0:
+                            base.pdeb("There was error during the hook execution", args.debug)
+                            if hook_result.stderr:
+                                base.pdeb("STDERR output:", args.debug)
+                                base.pdeb(hook_result.stderr, args.debug)
+                            errors_count += 1
+            else:
+                base.pdeb("Hooks directory " + post_hooks_dir + " doesn't exist", args.debug)
+        else:
+            base.pdeb("Hooks skipped, no need to run")
+    else:
+        base.pdeb("No hooks_dir defined, skipping")
 
 if errors_count > 0:
     base.eexit(1, "There was %d errors during process" % (errors_count))
