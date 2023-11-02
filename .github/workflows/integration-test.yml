@@ -23,7 +23,7 @@ jobs:
         pip install -r requirements.txt
     - name: Instal Project
       run: |
-        python setup.py install
+        pip3 install ./
     - name: Integration Tests
       run: |
         run-parts --exit-on-error --regex '^[0-9]+.*\.sh$' ./tests/
