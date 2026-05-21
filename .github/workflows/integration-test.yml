@@ -19,11 +19,12 @@ jobs:
         python-version: '3.x'
     - name: Install Dependencies
       run: |
-        apt-get update && apt-get install -y $(cat tests/system-requirements.txt)
+        apt-get update && apt-get install -y $(cat tests_py/system-requirements.txt)
         pip install -r requirements.txt
+        pip install -r tests_py/requirements-dev.txt
     - name: Instal Project
       run: |
         pip3 install ./
     - name: Integration Tests
       run: |
-        run-parts --exit-on-error --regex '^[0-9]+.*\.sh$' ./tests/
+        pytest tests_py/ -v

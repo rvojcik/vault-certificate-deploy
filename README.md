@@ -49,7 +49,7 @@ sudo python ./setup.py install
 
 In the end 
 ```
-vault-cert-deploy --help
+vault-certificate-deploy --help
 ```
 
 ## Example configuration
@@ -62,6 +62,34 @@ In `vault` section of configuration it is possible to
 set `mount_point` of secret in Vault. 
 By default it is `cert`.
 You could also change this option in arguments
+
+## Per-certificate options in cert-list file
+
+Each line in your cert-list file can carry per-certificate overrides using
+semicolon-delimited `key=value` pairs as the last field. Settings here take
+precedence over the global CLI flags and config defaults.
+
+For the deploy script — line format: `<cert_name> [options]`. Available options:
+* `cert_owner`, `cert_group` — file owner / group (overrides `deploy_user` / `deploy_group`)
+* `cert_perms` — octal permissions for cert files (default `0644`; key files are always `0640`)
+* `cert_copypath` — additional flat directory to copy all cert files into
+
+See `cert_list.example` for a full reference.
+
+For the issue script — line format: `<cert_name> [pki_mount] [pki_policy] [options]`.
+Above options plus:
+* `cert_ttl` — TTL when issuing the certificate (overrides `--cert-ttl`)
+* `cert_renew_min_ttl` — renewal threshold in seconds (overrides `--cert-min-ttl`)
+* Any Vault PKI parameter — `alt_names`, `ip_sans`, `uri_sans`, `other_sans`, `exclude_cn_from_sans`, ...
+
+See `cert_list_issue.example` for a full reference.
+
+Examples:
+```
+server1.domain.intra cert_owner=nginx;cert_group=nginx;cert_perms=640
+server2.domain.intra cert_copypath=/etc/haproxy/certs/
+server3.domain.intra pki default alt_names=api.domain.intra;cert_ttl=2592000
+```
 
 # Vault Configuration
 
@@ -128,10 +156,6 @@ vault-certificate-deploy.py -c /etc/vault-deploy/config.conf \
   --role-id $(cat /etc/vault_role_id)
 ```
 
-## Hooks
-
-Scripts support definition of hooks directory (`hook_dir`) where you can plase any exacutable file. Every file in hooks directory is executed every time ssl certificates are deployed or changed. You could script any action you need.
-
 ### Why  ?
 I store Puppet configuration in Git, and therefore I have not 
 role-id and secret-id together in my repository.
@@ -178,6 +202,36 @@ Result of this can be something like this
      DNS:console.domain.intra, DNS:console1.domain.intra, DNS:admin.domain.intra
 ```
 
+# Post-deploy hooks
+
+Both scripts can run executable scripts from a hooks directory after a deploy
+or issue run, but **only when at least one certificate file was actually
+written or changed on disk**. This makes the scripts safe to run on a cron
+schedule — services like nginx or haproxy only get reloaded when there's a
+real reason.
+
+The hook directory is configurable in the config file:
+```
+[hooks]
+post_hooks_dir=/etc/edrive/certificate-hooks.d
+```
+
+If the `[hooks]` section is omitted, each script falls back to its
+historical built-in default:
+* `/etc/edrive/vault-certificate-deploy/post-hooks.d/` — for the deploy script
+* `/etc/edrive/vault-certificate-deploy/post-issue-hooks.d/` — for the issue script
+
+Drop any executable file into the hook directory (e.g. a shell script that
+calls `systemctl reload nginx`). Hooks are executed in the order returned by
+the filesystem. A non-zero exit from a hook is counted as an error in the
+overall exit code but does not stop subsequent hooks from running.
+
+Example hook script:
+```bash
+#!/bin/bash
+systemctl reload nginx
+```
+
 # Security Best Practices
 * Never store your role-id and secret-id in your repository together
 * Deploy secret-id in way it's quick and easy for you to rotate/change
@@ -185,4 +239,31 @@ Result of this can be something like this
 * when deploy secret-id and role-id in files/config, always set correct permissions (eg. `0400`, `0600`)
 * in vault set policy to your approle only for `read` capability, it's enough
 * for highest security set individual approle for every server and set individual policy for every server and certificate
+
+# Development & Testing
+
+Tests live in `tests_py/` and run with pytest. The suite has two layers:
+
+* **Unit tests** for the shared certificate helpers — no Vault required, run in
+  under a second:
+  ```
+  pytest tests_py/test_cert_ops_unit.py
+  ```
+
+* **Integration tests** that spawn `vault server -dev` and exercise the real
+  CLI scripts:
+  ```
+  pytest tests_py/
+  ```
+  Requires the `vault` binary on `PATH` (or set `VAULT_BIN` env var). Each
+  test gets an isolated KV+PKI mount, so test order doesn't matter and tests
+  can run in parallel with `pytest -n auto` after installing `pytest-xdist`.
+
+Two tests use `chown` to a non-current user and are automatically skipped
+unless pytest runs as root. The hooks tests write into `/etc/edrive/...` and
+need the same privilege.
+
+The CI pipeline (`.gitlab-ci.yml`) runs the full suite against Python 3.9 and
+3.11 on every merge request. Local Docker-Compose-based runs are wired up via
+`dev/docker-compose.yaml` and `dev/run-tests.sh`.
 
