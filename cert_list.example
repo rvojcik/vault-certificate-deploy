@@ -1,3 +1,20 @@
 # Example cert_list file for vault-certificate-deploy
+#
+# Syntax:
+# <CERT_NAME> [OPTIONS]
+#
+# Simple format (uses defaults from config file):
 server1.domain.intra
 server2.domain.intra
+#
+# Per-certificate options (semicolon-separated key=value pairs in 2nd position):
+#   cert_owner    - file owner (overrides global deploy_user from config)
+#   cert_group    - file group (overrides global deploy_group from config)
+#   cert_perms    - octal permissions for cert files (default: 644 for certs, 640 for keys)
+#   cert_copypath - additional flat copy destination for all cert files
+#
+# Examples with per-certificate options:
+server3.domain.intra cert_owner=nginx;cert_group=nginx
+server4.domain.intra cert_owner=haproxy;cert_group=haproxy;cert_perms=640
+server5.domain.intra cert_copypath=/etc/haproxy/certs/
+server6.domain.intra cert_owner=nginx;cert_group=nginx;cert_perms=640;cert_copypath=/etc/nginx/ssl/

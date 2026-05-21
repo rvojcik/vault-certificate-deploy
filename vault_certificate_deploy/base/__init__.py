@@ -58,7 +58,7 @@ class ConfigParse:
         """ Parse config file """
 
         self.parser = ConfigParser()
-        self.parser.readfp(self.cfd)
+        self.parser.read_file(self.cfd)
 
 
     def config_reload(self):

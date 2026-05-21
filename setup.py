@@ -1,4 +1,6 @@
-from setuptools import setup, find_packages
+import os
+
+from setuptools import find_packages, setup
 
 with open("README.md", "r") as fh:
     long_description = fh.read()
@@ -8,7 +10,7 @@ with open("requirements.txt", "r") as fh:
 
 setup(
     name="vault-certificate-deploy",
-    version="1.4.2",
+    version=os.getenv("CI_COMMIT_TAG", default="1.3.6"),
     packages=find_packages(),
     install_requires=install_reqs,
     license="GPLv3",
@@ -21,26 +23,30 @@ setup(
     author_email="robert@vojcik.net",
     scripts=[
         "scripts/vault-certificate-deploy",
-        "scripts/vault-certificate-issue-deploy"
+        "scripts/vault-certificate-issue-deploy",
     ],
-    keywords=['vault_certificate_deploy', 'vault_cert_deploy', 'certificate', 'vault-certificate-deploy', 'vault-cert-deploy', 'hashicorp', 'certificates'],
+    keywords=[
+        "vault_certificate_deploy",
+        "vault_cert_deploy",
+        "certificate",
+        "vault-certificate-deploy",
+        "vault-cert-deploy",
+        "hashicorp",
+        "certificates",
+    ],
     classifiers=[
-            "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
-            "Operating System :: POSIX",
-            "Operating System :: Unix",
-            "Operating System :: POSIX :: Linux",
-            "Programming Language :: Python",
-            "Programming Language :: Python :: 3",
-            "Programming Language :: Python :: 3.6",
-            "Programming Language :: Python :: 3.7",
-            "Programming Language :: Python :: 3.8",
-            "Programming Language :: Python :: 3.9",
-            "Programming Language :: Python :: 3.10",
-            "Programming Language :: Python :: 3.11",
-            "Topic :: System :: Systems Administration",
-            "Topic :: Database",
-            "Topic :: Security",
-            "Topic :: Security :: Cryptography"
-    ]
+        "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
+        "Operating System :: POSIX",
+        "Operating System :: Unix",
+        "Operating System :: POSIX :: Linux",
+        "Programming Language :: Python",
+        "Programming Language :: Python :: 3",
+        "Programming Language :: Python :: 3.6",
+        "Programming Language :: Python :: 3.8",
+        "Programming Language :: Python :: 3.9",
+        "Topic :: System :: Systems Administration",
+        "Topic :: Database",
+        "Topic :: Security",
+        "Topic :: Security :: Cryptography",
+    ],
 )
-

@@ -1,13 +1,35 @@
-# Example cert_list file for issue version of the 
-# vault certificate deploy script.
-#
-# Issue version support extra certificate parameters
-# like alt_names, ip_sans, uri_sans etc
-# More infor about supported extra parameters is on
-# https://www.vaultproject.io/api/secret/pki/index.html#generate-certificate
+# Example cert_list file for vault-certificate-issue-deploy
 #
 # Syntax:
-# <CERT_NAME> [PKI_MOUNT_NAME] [PKI_POLICY] [CERT_EXTRA_PARAMS]
+# <CERT_NAME> [PKI_MOUNT_NAME] [PKI_POLICY] [OPTIONS]
+#
+# Simple format (uses defaults from config and command-line args):
 server1.domain.intra
-server2.domain.intra pki default alt_names=servers.domain.intra;ip_sans=192.168.1.1,192.168.2.1
-server1.domain2.in pki_kubernetes default
+server2.domain.intra
+#
+# Specify PKI mount and policy:
+server3.domain.intra pki_kubernetes default
+#
+# Per-certificate options (semicolon-separated key=value pairs in 4th position):
+#   Deploy options:
+#     cert_owner         - file owner (overrides global deploy_user)
+#     cert_group         - file group (overrides global deploy_group)
+#     cert_perms         - octal permissions for cert files (default: 644, keys: 640)
+#     cert_copypath      - additional flat copy destination for all cert files
+#     cert_ttl           - certificate TTL when issuing (overrides --cert-ttl)
+#     cert_renew_min_ttl - minimum TTL before renewal (overrides --cert-min-ttl)
+#
+#   Vault PKI parameters (passed to certificate generation):
+#     alt_names          - alternative DNS names (comma-separated)
+#     ip_sans            - IP SANs (comma-separated)
+#     uri_sans           - URI SANs (comma-separated)
+#     other_sans         - other SANs (comma-separated)
+#     exclude_cn_from_sans - exclude CN from SANs (true/false)
+#     More info: https://www.vaultproject.io/api/secret/pki/index.html#generate-certificate
+#
+# Examples:
+server4.domain.intra pki default alt_names=servers.domain.intra,api.domain.intra;ip_sans=192.168.1.1,192.168.2.1
+server5.domain.intra pki default cert_owner=nginx;cert_group=nginx;cert_perms=640
+server6.domain.intra pki default cert_copypath=/etc/haproxy/certs/;cert_owner=haproxy;cert_group=haproxy
+server7.domain.intra pki default alt_names=api.domain.intra;cert_owner=nginx;cert_group=nginx;cert_ttl=2592000
+server8.domain.intra pki default cert_ttl=7776000;cert_renew_min_ttl=604800

@@ -7,5 +7,5 @@ __version__ = "1.2.1"
 __copyright__ = "OpenSource"
 __license__ = "GPLv3"
 
-__all__ = [ "base", "colors" ]
+__all__ = [ "base", "colors", "cert_ops" ]
 

@@ -10,4 +10,11 @@ secret_id=<changeme>
 
 [storage]
 path=/etc/ssl-certificates
-#hook_dir=/etc/ssl-hooks.d
+
+# Optional: directory containing executable post-deploy hook scripts.
+# Hooks are run only when at least one certificate file actually changed.
+# If this section is omitted the scripts fall back to their built-in defaults:
+#   vault-certificate-deploy       -> /etc/edrive/vault-certificate-deploy/post-hooks.d
+#   vault-certificate-issue-deploy -> /etc/edrive/vault-certificate-deploy/post-issue-hooks.d
+#[hooks]
+#post_hooks_dir=/etc/edrive/certificate-hooks.d
