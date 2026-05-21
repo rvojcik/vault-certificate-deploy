@@ -213,13 +213,13 @@ real reason.
 The hook directory is configurable in the config file:
 ```
 [hooks]
-post_hooks_dir=/etc/edrive/certificate-hooks.d
+post_hooks_dir=/etc/certificate-hooks.d
 ```
 
 If the `[hooks]` section is omitted, each script falls back to its
 historical built-in default:
-* `/etc/edrive/vault-certificate-deploy/post-hooks.d/` — for the deploy script
-* `/etc/edrive/vault-certificate-deploy/post-issue-hooks.d/` — for the issue script
+* `/etc/vault-certificate-deploy/post-hooks.d/` — for the deploy script
+* `/etc/vault-certificate-deploy/post-issue-hooks.d/` — for the issue script
 
 Drop any executable file into the hook directory (e.g. a shell script that
 calls `systemctl reload nginx`). Hooks are executed in the order returned by
@@ -260,7 +260,7 @@ Tests live in `tests_py/` and run with pytest. The suite has two layers:
   can run in parallel with `pytest -n auto` after installing `pytest-xdist`.
 
 Two tests use `chown` to a non-current user and are automatically skipped
-unless pytest runs as root. The hooks tests write into `/etc/edrive/...` and
+unless pytest runs as root. The hooks tests write into `/etc/...` and
 need the same privilege.
 
 The CI pipeline (`.gitlab-ci.yml`) runs the full suite against Python 3.9 and

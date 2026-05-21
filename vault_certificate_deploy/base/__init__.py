@@ -100,7 +100,6 @@ def cleanup():
 
     Just in your code do something like this:
 
-    from edrive_lib import base
 
     def mycleanup():
         ...some my stuff...

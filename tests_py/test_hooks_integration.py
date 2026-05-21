@@ -3,7 +3,7 @@ Integration tests for post-hooks behaviour (pytest port of 30-hooks.sh).
 
 The hook directory is now driven by the [hooks] post_hooks_dir option in
 script.conf (set by the vault_test_env fixture to a per-test tmp path), so
-these tests run as any user — no /etc/edrive write access required.
+these tests run as any user — no /etc/ write access required.
 """
 
 

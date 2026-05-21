@@ -332,7 +332,7 @@ if __name__ == "__main__":
         post_hooks_dir = config.parser.get("hooks", "post_hooks_dir")
         base.pdeb(f"Post-hooks directory from config: {post_hooks_dir}", args.debug)
     except Exception as _:
-        post_hooks_dir = "/etc/edrive/vault-certificate-deploy/post-hooks.d"
+        post_hooks_dir = "/etc/vault-certificate-deploy/post-hooks.d"
         base.pdeb(f"Post-hooks directory using default: {post_hooks_dir}", args.debug)
     post_hooks_enabled = False
 

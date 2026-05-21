@@ -145,7 +145,7 @@ def vault_test_env(vault_client, vault_server, tmp_path):
     me_user = pwd.getpwuid(os.getuid()).pw_name
     me_group = grp.getgrgid(os.getgid()).gr_name
 
-    # Per-test post-hooks directory under tmp_path — no /etc/edrive write
+    # Per-test post-hooks directory under tmp_path — no /etc/ write
     # access needed. Wired into the script via [hooks] post_hooks_dir.
     hooks_dir = tmp_path / "post-hooks.d"
     hooks_dir.mkdir()
