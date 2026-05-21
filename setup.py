@@ -10,7 +10,7 @@ with open("requirements.txt", "r") as fh:
 
 setup(
     name="vault-certificate-deploy",
-    version=os.getenv("CI_ACTION_REF_NAME", default="0.0.1"),
+    version=os.getenv("CI_ACTION_REF_NAME", default="1.5.0"),
     packages=find_packages(),
     install_requires=install_reqs,
     license="GPLv3",
